@@ -77,6 +77,16 @@ class Proxy:
             Acd.append([c, zeta, eta])
         return Acd
 
+    def dlist(self, Acd, Td):
+        for c, zeta, eta in Acd:
+            for t in Td:
+                numerator = self.PARAMS['e'].apply(t, zeta)
+                denominator = self.PARAMS['e'].apply(eta, self.PARAMS['g'])
+                Iw = numerator / denominator
+
+        # TODO: Add the find which rows functionality
+        
+
 
     # FOR THE DATA USER
     def trapdoor(self, owner_public_key, query_words):
