@@ -105,6 +105,31 @@ class Proxy:
         return Td
 
 
+    def encrypt_trans(self, attr_list, data_owner_sk, data_user_pk, symmetric_key, P):
+        attr_string = "".join(attr_list)
+        Q = self.PARAMS["H1"](attr_string)
+        # Randomly select v from Zq
+        v = Element.random(self.PARAMS["e"], Zr)
+        g_power_xy = Element(self.PARAMS["e"], G1, value= data_user_pk ** data_owner_sk)
+        # Below steps are not clear in the paper so as to what + means
+        v_dash = g_power_xy + v
+        pairing_value = self.PARAMS["e"].apply(P, Q)
+        pairing_value = Element(self.PARAMS["e"], G1, value=pairing_value ** v)
+        hash_pairing_value = self.PARAMS["H2"](pairing_value)
+        # Cipher text is <v_dash, Symmetric_key XOR hash_pairing_value>
+        # return cipher text 
+
+    def decrypt_symmetric_key(self, c, ak, data_user_sk, data_owner_pk):
+        v_dash, V = c
+        g_power_xy = Element(self.PARAMS["e"], G1, value= data_owner_pk ** data_user_sk)
+        v = v_dash - g_power_xy
+        # Decrpyt V
+        pairing_value = self.PARAMS["e"].apply(ak, self.PARAMS["g"])
+        pairing_value = Element(self.PARAMS["e"], G1, value=pairing_value ** v)
+        hash_pairing_value = self.PARAMS["H2"](pairing_value)
+        # symmetric_key = V XOR hash_pairing_value
+
+
 
     # Connection details and main of the class
     def start_proxy(self):
