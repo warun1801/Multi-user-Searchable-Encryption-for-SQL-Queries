@@ -5,7 +5,7 @@ import threading
 import pprint
 from generation_utils import setup
 import pickle
-
+from pypbc import *
 
 class CertificationAuthServer:
     def __init__(self, host, port):
@@ -65,6 +65,22 @@ class CertificationAuthServer:
                 client.send(message.encode())
             except socket.error as e:
                 print(f"Error: {e}")
+
+    def generate_master_secret(self):
+        # Assume all PARAMS are generated and available in pbc format
+        self.msk = Element.random(self.PARAMS["e"], Zr)
+        P = Element(self.PARAMS["e"], G1, value=self.PARAMS["g"] ** self.msk)
+        return P
+
+    def SkeyGen(self, attr_list, msk, pk_proxy):
+        # attr_list = [attr1, attr2, ...]
+        attr_string = "".join(attr_list)
+        Q = self.PARAMS["H1"](attr_string)
+        # ak is the attribute private key
+        ak = Element(self.PARAMS["e"], G1, value=Q ** msk)
+        # Now encrypt ak using the proxy public key
+        # TODO: Encryption algo
+        # return the encrypted ak to proxy server
 
 
 
