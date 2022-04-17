@@ -57,7 +57,7 @@ def encIndex(table, params, private_key):
     enc_indices = defaultdict()
     for w in W:
         enc_indices[w] = params['e'].apply(
-                                                Element(params['e'], G1, value=params['h1'](w) ** x),
+                                                Element(params['e'], G1, value=params['h1'](w) ** int(x)),
                                                 Element(params['e'], G2, value=params['g'] ** r)
                                                 )
     # pprint(enc_indices)
@@ -79,7 +79,7 @@ def trapdoor(params, owner_public_key, user_private_key, query_words):
     # Use tk to generate the trapdoor
     Td = []
     for word in query_words:
-        Td.append(Element(params["e"], G1, value =params['h1'](word) ** tk))
+        Td.append(Element(params["e"], G1, value = params['h1'](word)))
     return Td
 
 # Access control
@@ -103,10 +103,12 @@ def dlist(params, Acd, Td, I):
     for c, zeta, eta in Acd:
         denominator = params["e"].apply(eta, params["g"])
         for t in Td:
+            print(f"Td: {t}")
             numerator = params["e"].apply(t, zeta)
+            print(f"Numerator = {numerator}")
             # TODO: How to divide 2 elements of GT
-            print("Normal=",denominator)
-            print("Inverse=",Element(params['e'], GT, value = ~denominator))
+            # print("Denominator =",denominator)
+            # print("Inverse=",Element(params['e'], GT, value = ~denominator))
             # **-1 does not work for GT
             # value = Element(params["e"], GT, value = numerator * (denominator ** -1))
             # print("value:",value)
@@ -115,11 +117,16 @@ def dlist(params, Acd, Td, I):
             # Get the keyword that matches here
             # if value in I.values():
             #     print("Found a match")
-            # for value in I.values():
-            #     if numerator == Element(params["e"], GT, value = value * denominator):
-            #         print("Found a match")
+            for value in I.values():
+                print(f"Num/Denom = {numerator}")
+                print(f"Value = {value}")
+                if numerator ==  value:
+                    print("Found a match")
 
     return matches
+
+
+
 
 def main():
     # Setup the params
@@ -129,18 +136,21 @@ def main():
     print( "public_key =", public_key)
     print( "private_key =", private_key)
     # Get the table
-    table = fetch_table("data/table1.csv")
+    table = fetch_table("data/table2.csv")
     word_to_row_data = create_dictionary(table)
     # Create the keyword index
     I, r = encIndex(table, params, private_key) # r choosen by data owner
     # print(I)
-    # Get a symmteric key to encrypt the tables
+
+    # print(word_to_row_data)
+
+    # # Get a symmteric key to encrypt the tables
     sym_key = Fernet.generate_key()
     binary_key = ''.join(format(ord(i), '08b') for i in sym_key.decode())
     # print(sym_key)
     # print(binary_key, len(binary_key))
     # print("Int key =", int(binary_key, 2))
-    # Encrypt the tables
+    # # Encrypt the tables
     tables = ["data/table1.csv"]
     C = encTable(tables, sym_key)
     # print(C)
@@ -148,16 +158,18 @@ def main():
     data_user_sk, data_user_pk = keyGen(params)
     query_words = ["dhruv", "warun"]
     Td = trapdoor(params, public_key, data_user_sk, query_words)
-    # print(Td)
-    # Generate the ACD for access control
-    # print(r)
+    print(f"Trapdoor: {Td}")
+    # # Generate the ACD for access control
+    # # print(r)
     Acd = delegate(params, r, private_key, data_user_pk, C)
-    # print(Acd)
-    # Get the row/keyword matches
-    print(I.values())
+    print(f"ACD: {Acd}")
+    # # Get the row/keyword matches
+    # print(I.values())
 
     matches = dlist(params, Acd, Td, I)
-    print(matches)
+
+    # print(params["e"].apply(params["h1"]("dhruv") ** 2, params["g"] ** 10) == params["e"].apply(params["h1"]("dhruv"), params["g"] ** 20))
+    # print(matches)
 
 
 if __name__ == "__main__":

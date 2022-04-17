@@ -1,6 +1,7 @@
-from pypbc import Element, Pairing, Parameters, Zr, G1, G2, GT, get_random_prime
+# from pypbc import Element, Pairing, Parameters, Zr, G1, G2, GT, get_random_prime
 import warnings
-
+import math
+from cryptography.fernet import Fernet
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 """
@@ -84,9 +85,36 @@ def key_gen(params):
 
     return (public_key, private_key)
 
+
+def key_byte_to_int(sym_key):
+    new_key = ''
+    for c in sym_key.decode():
+        new_key += str(ord(c)).zfill(3)
+    return int(new_key)
+
+def key_int_to_byte(key):
+    l = len(str(key))
+    # print(f"L = {l}")
+    x = math.ceil(l/3) * 3
+    # print(f"X = {x}")
+    key = str(key).zfill(x)
+
+    new_key = ''
+    for i in range(0, x, 3):
+        new_key += chr(int(key[i:i+3]))
+        
+    return new_key.encode()
+
+
+
 def main():
-    params = setup(1024)
+    # params = setup(1024)
     # keys = key_gen(params)
+    sym_key = Fernet.generate_key()
+    print("sym_key:", sym_key)
+    print("sym_key_int:", key_byte_to_int(sym_key))
+    print("sym_key_byte:", key_int_to_byte(key_byte_to_int(sym_key)))
+
     
 
 if __name__ == '__main__':

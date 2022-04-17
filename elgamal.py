@@ -4,6 +4,8 @@ Elliptic Curve Elgamal implementation to encrypt and decrypt symmetric keys for 
 import pypbc
 from pypbc import *
 import warnings
+from generation_utils import key_byte_to_int, key_int_to_byte
+from cryptography.fernet import Fernet
 
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
@@ -51,13 +53,20 @@ def elgamal_decrypt(C1, C2, pairing, private_key, g, q):
 
 if __name__ == "__main__":
     # Generate a key pair
-    pairing, private_key, public_key, g, q = generate_keys(10)
+    pairing, private_key, public_key, g, q = generate_keys(1024)
     # # Encrypt a message
-    msg = int(input("Enter a message: "))
+    sym_key = Fernet.generate_key()
+    print(f"Symmetric key: {sym_key}")
+
+
+
+    # msg = int(input("Enter a message: "))
+    msg = key_byte_to_int(sym_key)
     C1, C2 = elgamal_encrypt(msg, g, pairing, public_key, q)
     print("C1 =", C1)
     print("C2 =", C2)
     # # Decrypt the message
     msg_decrypted = elgamal_decrypt(C1, C2, pairing, private_key, g, q)
+    print(f"Decrypted message: {key_int_to_byte(msg_decrypted)}")
     # # Check that the decrypted message is the same as the original
-    assert msg == msg_decrypted
+    # assert msg == msg_decrypted
