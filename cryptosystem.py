@@ -4,6 +4,7 @@ from collections import defaultdict
 from cryptography.fernet import Fernet
 from pypbc import *
 from elgamal import elgamal_encrypt, elgamal_decrypt
+from generation_utils import key_byte_to_int, key_int_to_byte
 from dict_creation import create_keyword_set, fetch_table, create_dictionary
 
 
@@ -122,11 +123,64 @@ def dlist(params, Acd, Td, I):
                 print(f"Value = {value}")
                 if numerator ==  value:
                     print("Found a match")
+                    # TODO: Append matches here
 
     return matches
 
+# 4.4 ALGOS
+def init_ca_params(params):
+    msk = Element.random(params["e"], Zr)
+    P = Element(params["e"], G1, value= params["g"] ** msk)
+    return msk, P
 
+def skeyGen(params, attr_list, msk, public_key_to_encrypt):
+    attr_string = "".join(attr_list)
+    Q = params["h1"](attr_string)
+    # ak is the attribute private key
+    ak = Element(params["e"], G1, value=Q ** msk)
+    # Now encrypt ak using the proxy public key
+    print("ak=",ak)
+    # print(str(ak))
+    int_val = key_byte_to_int(str(ak).encode())
+    # # Steps to preserve the ak
+    # new_ak = Element(params["e"], G1, value=key_int_to_byte(int_val).decode())
+    # print(new_ak)
+    # Encrypt ak
+    ak_enc = elgamal_encrypt(int_val, params['g'], params['e'], public_key_to_encrypt, params['q'])
+    # print(ak_enc)
+    return ak_enc
 
+def decrypt_ak(params, ak_enc, private_key_to_decrypt):
+    c1, c2 = ak_enc
+    ak_val = elgamal_decrypt(c1, c2, params['e'], private_key_to_decrypt, params['g'], params['q'])
+    ak = Element(params["e"], G1, value=key_int_to_byte(ak_val).decode())
+    return ak
+
+def encryTrans(params, attr_list, data_owner_sk, data_user_pk, sym_key, P):
+    attr_string = "".join(attr_list)
+    Q = params["h1"](attr_string)
+    v = Element.random(params["e"], Zr)
+    g_power_xy = Element(params["e"], G1, value= data_user_pk ** data_owner_sk)
+    # Unsure steps
+    v_dash = g_power_xy + v
+    pairing_value = params["e"].apply(Q, P) ** v
+    # Do XOR between pairing_value and sym_key here
+    # TODO: Implement XOR
+    c = v_dash, XOR(sym_key, params["h2"](pairing_value))
+    return c
+
+def decryTrans(params, c, ak_enc, data_owner_pk, data_user_sk):
+    v_dash, V = c
+    g_power_xy = Element(params["e"], G1, value= data_owner_pk ** data_user_sk)
+    # Unsure step
+    v = v_dash - g_power_xy
+    # Decrpyt V
+    ak = decrypt_ak(params, ak_enc, data_user_sk)
+    pairing_value = params["e"].apply(ak, params["g"]) ** v
+    hash_pairing_value = params["h2"](pairing_value)
+    # Do XOR between hash_pairing_value and V here
+    sym_key = XOR(hash_pairing_value, V)
+    return sym_key
 
 def main():
     # Setup the params
@@ -170,6 +224,8 @@ def main():
 
     # print(params["e"].apply(params["h1"]("dhruv") ** 2, params["g"] ** 10) == params["e"].apply(params["h1"]("dhruv"), params["g"] ** 20))
     # print(matches)
+    msk, P = init_ca_params(params)
+    ak_enc = skeyGen(params, ["dhruv", "warun"], msk, P)
 
 
 if __name__ == "__main__":
