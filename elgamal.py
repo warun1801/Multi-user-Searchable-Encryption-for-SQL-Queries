@@ -1,6 +1,7 @@
 """
 Elliptic Curve Elgamal implementation to encrypt and decrypt symmetric keys for algorrithms mentioned in the paper
 """
+import math
 import pypbc
 from pypbc import *
 import warnings
@@ -49,24 +50,72 @@ def elgamal_decrypt(C1, C2, pairing, private_key, g, q):
     # print(message)
     return message
 
+def elgamal_encrypt_block(msg, g, pairing, public_key, q, block_size = 40):
+    # Assume that msg is a long integer
+    str_msg = str(msg)
+    len_msg = len(str_msg)
+    iters = math.ceil(len_msg / block_size)
+    # print("Iterations: ", iters)
+    # print("Total length of data: ", len_msg)
+    encrypted_data = []
+    for i in range(iters):
+        block_data = str_msg[i*block_size:(i+1)*block_size]
+        # print(f"block_data {i}: {block_data}")
+        block_int = int(block_data)
+        encryption = elgamal_encrypt(block_int, g, pairing, public_key, q)
+        encrypted_data.append(encryption)
+    return encrypted_data, len_msg
+
+def elgamal_decrypt_block(encrypted_data, g, pairing, private_key, q, len_msg ,block_size = 40):
+    decrypted_data = []
+    for i in encrypted_data:
+        decryption = elgamal_decrypt(i[0], i[1], pairing, private_key, g, q)
+        # print(f"decryption : {decryption}")
+        decrypted_data.append(decryption)
+    # Combine to single int-string
+    str_msg = ""
+    iters = math.ceil(len_msg / block_size)
+    for i in range(iters):
+        if i != iters -1:
+            block_data = str(decrypted_data[i]).zfill(block_size)
+            str_msg += block_data
+        else:
+            # print("Here")
+            block_data = str(decrypted_data[i]).zfill(len_msg % block_size)
+            str_msg += block_data
+    # print("Reconstructed length: ", len(str_msg))
+    return int(str_msg)
 
 
 if __name__ == "__main__":
     # Generate a key pair
-    pairing, private_key, public_key, g, q = generate_keys(1024)
+    pairing, private_key, public_key, g, q = generate_keys(100)
     # # Encrypt a message
-    sym_key = Fernet.generate_key()
+    # sym_key = Fernet.generate_key()
+    # print(f"Symmetric key: {sym_key}")
+
+    sym_key = Element.random(pairing, G1)
+
+    msg = key_byte_to_int(str(sym_key).encode())
     print(f"Symmetric key: {sym_key}")
-
-
-
-    # msg = int(input("Enter a message: "))
-    msg = key_byte_to_int(sym_key)
-    C1, C2 = elgamal_encrypt(msg, g, pairing, public_key, q)
-    print("C1 =", C1)
-    print("C2 =", C2)
+    print(f"Message: {msg}")
+    encrypted_data, len_msg = elgamal_encrypt_block(msg, g, pairing, public_key, q)
+    # print(f"Encrypted data: {encrypted_data}")
     # # Decrypt the message
-    msg_decrypted = elgamal_decrypt(C1, C2, pairing, private_key, g, q)
-    print(f"Decrypted message: {key_int_to_byte(msg_decrypted)}")
-    # # Check that the decrypted message is the same as the original
+    decrypted_data = elgamal_decrypt_block(encrypted_data, g, pairing, private_key, q, len_msg)
+    print(f"Decrypted data: {decrypted_data}")
+
+    # # Convert the decrypted data to a key
+    decrypted_key = key_int_to_byte(decrypted_data)
+    print(f"Decrypted key: {decrypted_key}")
+
+    # # msg = int(input("Enter a message: "))
+    # msg = key_byte_to_int(sym_key)
+    # C1, C2 = elgamal_encrypt(msg, g, pairing, public_key, q)
+    # print("C1 =", C1)
+    # print("C2 =", C2)
+    # # # Decrypt the message
+    # msg_decrypted = elgamal_decrypt(C1, C2, pairing, private_key, g, q)
+    # print(f"Decrypted message: {key_int_to_byte(msg_decrypted)}")
+    # # # Check that the decrypted message is the same as the original
     # assert msg == msg_decrypted
