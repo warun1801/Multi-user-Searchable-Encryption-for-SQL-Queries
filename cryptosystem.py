@@ -103,29 +103,16 @@ def dlist(params, Acd, Td, I):
     for c, zeta, eta in Acd:
         denominator = params["e"].apply(eta, params["g"])
         for t in Td:
-            print(f"Td: {t}")
+            # print(f"Td: {t}")
             numerator = params["e"].apply(t, zeta)
-            print(f"Numerator = {numerator}")
-            # TODO: How to divide 2 elements of GT
-            # print("Denominator =",denominator)
-            # print("Inverse=",Element(params['e'], GT, value = ~denominator))
-            # **-1 does not work for GT
-            # value = Element(params["e"], GT, value = numerator * (denominator ** -1))
-            # print("value:",value)
-            # Now check which keyword matches
-            # Get the table word-to-row dict here and if matches, return the row id
-            # Get the keyword that matches here
-            # if value in I.values():
-            #     print("Found a match")
-            for value in I.values():
-                print(f"Num/Denom = {numerator}")
-                print(f"Value = {value}")
+            for key, value in I.items():
+                # print(f"Num/Denom = {numerator}")
+                # print(f"Value = {value}")
                 if numerator ==  value:
-                    print("Found a match")
+                    # print("Found a match")
+                    matches.append(key)
 
     return matches
-
-
 
 
 def main():

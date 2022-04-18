@@ -1,4 +1,4 @@
-# from pypbc import Element, Pairing, Parameters, Zr, G1, G2, GT, get_random_prime
+from pypbc import Element, Pairing, Parameters, Zr, G1, G2, GT, get_random_prime
 import warnings
 import math
 from cryptography.fernet import Fernet
@@ -46,11 +46,11 @@ def setup(k):
     private_key = Element.random(pairing, Zr)
     public_key = Element(pairing, G1, value=g**private_key)
 
-    print("Private:", private_key)
-    print("Public:", public_key)
+    # print("Private:", private_key)
+    # print("Public:", public_key)
 
-    print("q:", q)
-    print("g", g)
+    # print("q:", q)
+    # print("g", g)
     
     # def hash1(message):
     #     return Element.from_hash(pairing, G1, str(message))
@@ -61,14 +61,14 @@ def setup(k):
     # def hash3(message):
     #     return Element.from_hash(pairing, Zr, str(message))
     
-    # return {
-    #         "q": q,
-    #         "e": pairing,
-    #         "g": str(g),
-    #         "h1": hash1,
-    #         "h2": hash2,
-    #         "h3": hash3
-    #         } #params
+    return {
+            "q": q,
+            "e": str(param),
+            "g": str(g),
+            # "h1": hash1,
+            # "h2": hash2,
+            # "h3": hash3
+            } #params
     
 
 def key_gen(params):
@@ -78,10 +78,10 @@ def key_gen(params):
     private_key = Element.random(pairing, Zr)
     public_key = Element(pairing, G1, value=g**private_key)
     
-    print("q = ", params["q"])
-    print("g =", g)
-    print("public_key =", public_key)
-    print("private_key =", private_key)
+    # print("q = ", params["q"])
+    # print("g =", g)
+    # print("public_key =", public_key)
+    # print("private_key =", private_key)
 
     return (public_key, private_key)
 

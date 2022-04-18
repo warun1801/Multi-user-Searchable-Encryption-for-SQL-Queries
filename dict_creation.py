@@ -30,12 +30,11 @@ def fetch_table(path):
             table.append(line.strip().split(','))
     return table
 
-def main():
-    table = fetch_table('data/table1.csv')
+def get_table_info(table_name):
+    table = fetch_table(table_name)
     W = create_keyword_set(table)
     A = create_dictionary(table)
-    pprint(W)
-    pprint(A)
+    return table, W, A
 
 if __name__ == "__main__":
-    main()
+    get_table_info()

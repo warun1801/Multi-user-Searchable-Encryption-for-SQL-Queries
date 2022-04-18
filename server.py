@@ -19,7 +19,7 @@ class CertificationAuthServer:
         try:
             serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             serv.bind((self.host, self.port))
-            print(f"Server started on {self.host}:{self.port}")
+            print(f"CA Server started on {self.host}:{self.port}")
             serv.listen(5)
             # serv.settimeout(120)
 
@@ -29,10 +29,10 @@ class CertificationAuthServer:
                     print(f"Connected to client: {addr}")
 
                     self.client_count += 1
-                    print(f"Client Count: {self.client_count}")
+                    # print(f"Client Count: {self.client_count}")
 
                     self.CLIENTS.append(conn)
-                    threading.Thread(target=self.handle_client, args=(conn,)).start()
+                    threading.Thread(target=self.handle_client, args=(conn, addr)).start()
                 except Exception as e:
                     print(f"Error: {e}")
                 except KeyboardInterrupt:
@@ -43,20 +43,22 @@ class CertificationAuthServer:
             print(f"Socket Error: {e}")
             sys.exit(1)
 
-    def handle_client(self, conn):
+    def handle_client(self, conn, addr):
         conn.send(pickle.dumps(self.PARAMS))
         conn.settimeout(120)
-        while True:
-            data = conn.recv(1000000)
-            if not data:
-                break
+        
+        data = conn.recv(1000000)
+        if (not data) or data == b'done':
+            return
 
-            data = pickle.loads(data)
-            pprint.pprint(f"Received: {data}")
+        data = pickle.loads(data)
+        # pprint.pprint(f"Received: {data}")
+        with open('data/public_keys.csv', 'a') as f:
+            f.write(f"{addr[1]},{data}\n")
 
         self.CLIENTS.remove(conn)
         self.client_count -= 1
-        print(f"Removed 1 client. Client Count: {self.client_count}")
+        # print(f"Removed 1 client. Client Count: {self.client_count}")
         conn.close()
 
     def broadcast(self, message):
