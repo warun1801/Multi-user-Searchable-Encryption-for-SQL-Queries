@@ -1,6 +1,7 @@
 from collections import defaultdict
 import socket
 from time import sleep
+from cryptosystem import decryTrans, encryTrans
 from dict_creation import create_keyword_set, get_table_info
 from generation_utils import key_gen
 import argparse
@@ -24,8 +25,10 @@ class Proxy:
         self.dbms_port = 8004
         self.my_host  = host
         self.my_port = int(port)
-        self.sym_key = Fernet.generate_key()
-
+        self.sym_key = ""
+        self.ak_enc = ""
+        self.len_msg = 0
+        self.P = ""
         self.PARAMS = {}
         self.public_key = ""
         self.private_key = ""
@@ -99,31 +102,6 @@ class Proxy:
         return Td
 
 
-    def encrypt_trans(self, attr_list, data_owner_sk, data_user_pk, symmetric_key, P):
-        attr_string = "".join(attr_list)
-        Q = self.PARAMS["H1"](attr_string)
-        # Randomly select v from Zq
-        v = Element.random(self.PARAMS["e"], Zr)
-        g_power_xy = Element(self.PARAMS["e"], G1, value= data_user_pk ** data_owner_sk)
-        # Below steps are not clear in the paper so as to what + means
-        v_dash = g_power_xy + v
-        pairing_value = self.PARAMS["e"].apply(P, Q)
-        pairing_value = Element(self.PARAMS["e"], G1, value=pairing_value ** v)
-        hash_pairing_value = self.PARAMS["H2"](pairing_value)
-        # Cipher text is <v_dash, Symmetric_key XOR hash_pairing_value>
-        # return cipher text 
-
-    def decrypt_symmetric_key(self, c, ak, data_user_sk, data_owner_pk):
-        v_dash, V = c
-        g_power_xy = Element(self.PARAMS["e"], G1, value= data_owner_pk ** data_user_sk)
-        v = v_dash - g_power_xy
-        # Decrpyt V
-        pairing_value = self.PARAMS["e"].apply(ak, self.PARAMS["g"])
-        pairing_value = Element(self.PARAMS["e"], G1, value=pairing_value ** v)
-        hash_pairing_value = self.PARAMS["H2"](pairing_value)
-        # symmetric_key = V XOR hash_pairing_value
-
-
 
     # Connection details and main of the class
     def start_proxy(self):
@@ -139,9 +117,10 @@ class Proxy:
 
             data = conn.recv(10000000)
             
-            self.PARAMS = pickle.loads(data)
+            self.PARAMS, self.P = pickle.loads(data)
             self.fix_params()
-
+            self.P = Element(self.PARAMS["e"], G1, value=self.P)
+            
             print("-"*30)
             print("Params", end=" ")
             pprint.pprint(self.PARAMS)
@@ -151,6 +130,19 @@ class Proxy:
             print(f"public_key = {self.public_key}\nprivate_key = {self.private_key}")
 
             conn.send(pickle.dumps((str(self.public_key))))
+
+            if self.my_port == userId:
+                data = conn.recv(1000000)
+                ak_enc, len_msg = pickle.loads(data)
+
+                for i, val in enumerate(ak_enc):
+                    ak_enc[i] = (Element(self.PARAMS["e"], G1, value=val[0]), val[1])
+
+                print(f"Ak_enc: {ak_enc}")
+                # ak_enc = Element(self.PARAMS["e"], G1, value=ak_enc) 
+                self.ak_enc = ak_enc
+                self.len_msg = len_msg
+
             conn.close()
 
             # Data Owner
@@ -173,6 +165,10 @@ class Proxy:
 
                         table_name = "data/table2.csv"
                         table, W, A = get_table_info(table_name)
+
+
+                        self.sym_key = Fernet.generate_key()
+
                         encTable = self.encrypt_tables([table], self.sym_key)
                         encIndices = self.enc_index(table)
                         ownerId = self.my_port
@@ -211,8 +207,18 @@ class Proxy:
                         conn.send(pickle.dumps(td))
                         print("Sent Trapdoor!")
 
-                        Matchlist = conn.recv(1000000)
-                        print(f"Searchable Encryption Matches: {pickle.loads(Matchlist)}")
+                        Matchlist = pickle.loads(conn.recv(1000000))
+                        print(f"Searchable Encryption Matches: {Matchlist}")
+
+                        enc_sym_key = ''
+                        with open('data/enc_sym_key.txt', 'rb') as f:
+                            enc_sym_key = f.read()
+                            enc_sym_key = pickle.loads(enc_sym_key)
+
+                        print(f"enc_sym_key: {enc_sym_key}")
+                        sym_key = decryTrans(self.PARAMS, enc_sym_key, self.ak_enc, owner_pub_key, self.private_key, self.len_msg)
+                        print(f"Decrypted Symmetric Key: {sym_key}")
+
                         print("-"*30)
 
                     if op == 3:
@@ -235,9 +241,15 @@ class Proxy:
                                 user_id = int(data[0])
                                 if user_id == userId:
                                     user_pub_key = data[1]
+                        user_pub_key = Element(self.PARAMS["e"], G1, value=user_pub_key)
+
+                        attr_list = ["name","name","name"]
+                        enc_sym_key = encryTrans(self.PARAMS, attr_list, self.private_key, user_pub_key, self.sym_key, self.P)
+                        print(f"Enc_sym_key: {enc_sym_key}")
+                        with open('data/enc_sym_key.txt', 'wb') as f:
+                            f.write(pickle.dumps(enc_sym_key))
 
                         # print(F"User public key: {user_pub_key}")
-                        user_pub_key = Element(self.PARAMS["e"], G1, value=user_pub_key)
                         Acd = self.delegate(user_pub_key, [1])
                         print(f"Acd: {Acd}")
                         sleep(2)

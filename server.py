@@ -1,8 +1,11 @@
 import argparse
+import enum
 import socket
 import sys
 import threading
 import pprint
+from xml.dom.minidom import Element
+from cryptosystem import init_ca_params, skeyGen
 from generation_utils import setup
 import pickle
 from pypbc import *
@@ -14,6 +17,28 @@ class CertificationAuthServer:
         self.host = host
         self.port = int(port)
         self.client_count = 0
+        self.msk, self.P = init_ca_params(self.fix_params())
+
+    def fix_params(self):
+        params = self.PARAMS.copy()
+        params["e"] = Pairing(Parameters(param_string=params["e"]))
+        params["g"] = Element(params["e"], G1, value=params["g"])
+
+        def hash1(message):
+            return Element.from_hash(params["e"], G1, str(message))
+
+        def hash2(element):
+            return Element.from_hash(params["e"], Zr, str(element))
+
+        def hash3(message):
+            return Element.from_hash(params["e"], Zr, str(message))
+
+        params["H1"] = hash1
+        params["H2"] = hash2
+        params["H3"] = hash3
+
+        # print(params)
+        return params
 
     def start_server(self):
         try:
@@ -44,7 +69,7 @@ class CertificationAuthServer:
             sys.exit(1)
 
     def handle_client(self, conn, addr):
-        conn.send(pickle.dumps(self.PARAMS))
+        conn.send(pickle.dumps((self.PARAMS, str(self.P))))
         conn.settimeout(120)
         
         data = conn.recv(1000000)
@@ -52,6 +77,20 @@ class CertificationAuthServer:
             return
 
         data = pickle.loads(data)
+        private_key = Element(self.fix_params()["e"], G1, value=data)
+
+        # generate secret key
+        attr_list = ["name", "name", "name"]
+        ak_enc, len_msg = skeyGen(self.fix_params(), attr_list, self.msk, private_key)
+        if addr[1] == 6002:
+            print("Sending skey to data user")
+            # print(f"ak_enc: {ak_enc} len_msg: {len_msg}")
+
+            for i, val in enumerate(ak_enc):
+                ak_enc[i] = (str(val[0]), val[1])
+
+            conn.send(pickle.dumps((ak_enc, len_msg)))
+        
         # pprint.pprint(f"Received: {data}")
         with open('data/public_keys.csv', 'a') as f:
             f.write(f"{addr[1]},{data}\n")
@@ -67,23 +106,6 @@ class CertificationAuthServer:
                 client.send(message.encode())
             except socket.error as e:
                 print(f"Error: {e}")
-
-    def generate_master_secret(self):
-        # Assume all PARAMS are generated and available in pbc format
-        self.msk = Element.random(self.PARAMS["e"], Zr)
-        P = Element(self.PARAMS["e"], G1, value=self.PARAMS["g"] ** self.msk)
-        return P
-
-    def SkeyGen(self, attr_list, msk, pk_proxy):
-        # attr_list = [attr1, attr2, ...]
-        attr_string = "".join(attr_list)
-        Q = self.PARAMS["H1"](attr_string)
-        # ak is the attribute private key
-        ak = Element(self.PARAMS["e"], G1, value=Q ** msk)
-        # Now encrypt ak using the proxy public key
-        # TODO: Encryption algo
-        # return the encrypted ak to proxy server
-
 
 
 if __name__ == "__main__":

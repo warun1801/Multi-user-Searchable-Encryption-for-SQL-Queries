@@ -37,8 +37,11 @@ def elgamal_encrypt(msg, g, pairing, public_key, q):
     # Compute C1 = g^k
     C1 = Element(pairing, G1, value=g**k)
     # Compute C2 = msg + h(k*publci_key) mod q
-    k_pk = Element(pairing, G1, value = public_key**k)
-    hash_value = Element.from_hash(pairing, Zr, str(k_pk))
+    # print(f"Pairing: {pairing}")
+
+
+    kerpk = Element(pairing, G1, value=public_key**k)
+    hash_value = Element.from_hash(pairing, Zr, str(kerpk))
     # print(int(hash_value))
     C2 = ( msg + int(hash_value) ) % q
     return C1, C2
@@ -69,6 +72,7 @@ def elgamal_encrypt_block(msg, g, pairing, public_key, q, block_size = 40):
 def elgamal_decrypt_block(encrypted_data, g, pairing, private_key, q, len_msg ,block_size = 40):
     decrypted_data = []
     for i in encrypted_data:
+        # print(f"I = {i}")
         decryption = elgamal_decrypt(i[0], i[1], pairing, private_key, g, q)
         # print(f"decryption : {decryption}")
         decrypted_data.append(decryption)
@@ -97,17 +101,17 @@ if __name__ == "__main__":
     sym_key = Element.random(pairing, G1)
 
     msg = key_byte_to_int(str(sym_key).encode())
-    print(f"Symmetric key: {sym_key}")
-    print(f"Message: {msg}")
+    # print(f"Symmetric key: {sym_key}")
+    # print(f"Message: {msg}")
     encrypted_data, len_msg = elgamal_encrypt_block(msg, g, pairing, public_key, q)
     # print(f"Encrypted data: {encrypted_data}")
     # # Decrypt the message
     decrypted_data = elgamal_decrypt_block(encrypted_data, g, pairing, private_key, q, len_msg)
-    print(f"Decrypted data: {decrypted_data}")
+    # print(f"Decrypted data: {decrypted_data}")
 
     # # Convert the decrypted data to a key
     decrypted_key = key_int_to_byte(decrypted_data)
-    print(f"Decrypted key: {decrypted_key}")
+    # print(f"Decrypted key: {decrypted_key}")
 
     # # msg = int(input("Enter a message: "))
     # msg = key_byte_to_int(sym_key)

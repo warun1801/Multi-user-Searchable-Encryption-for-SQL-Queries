@@ -36,9 +36,9 @@ def setup(k):
             "q": q,
             "e": pairing,
             "g": g,
-            "h1": hash1,
-            "h2": hash2,
-            "h3": hash3
+            "H1": hash1,
+            "H2": hash2,
+            "H3": hash3
             } #params
 
 # Generate pk, sk for data owner/user
@@ -59,7 +59,7 @@ def encIndex(table, params, private_key):
     enc_indices = defaultdict()
     for w in W:
         enc_indices[w] = params['e'].apply(
-                                                Element(params['e'], G1, value=params['h1'](w) ** int(x)),
+                                                Element(params['e'], G1, value=params['H1'](w) ** int(x)),
                                                 Element(params['e'], G2, value=params['g'] ** r)
                                                 )
     # pprint(enc_indices)
@@ -77,11 +77,11 @@ def encTable(tables, sym_key):
 def trapdoor(params, owner_public_key, user_private_key, query_words):
     g_power_xy = Element(params["e"], G1, value= owner_public_key ** user_private_key)
     a, b = str(g_power_xy[0]), str(g_power_xy[1])
-    tk = params['h3'](a + b)
+    tk = params['H3'](a + b)
     # Use tk to generate the trapdoor
     Td = []
     for word in query_words:
-        Td.append(Element(params["e"], G1, value = params['h1'](word)))
+        Td.append(Element(params["e"], G1, value = params['H1'](word)))
     return Td
 
 # Access control
@@ -89,7 +89,7 @@ def delegate(params, r, owner_private_key, user_public_key, C):
     # Get the trapdoor for g_power_xy
     g_power_xy = Element(params["e"], G1, value= user_public_key ** owner_private_key)
     a, b = str(g_power_xy[0]), str(g_power_xy[1])
-    tk = params['h3'](a + b)
+    tk = params['H3'](a + b)
     rx = r * int(owner_private_key)
     zeta = Element(params["e"], G2, params['g'] ** rx)
     eta = Element(params["e"], G1, params['g'] ** tk)
@@ -123,13 +123,14 @@ def init_ca_params(params):
     return msk, P
 
 def skeyGen(params, attr_list, msk, public_key_to_encrypt):
+    # print(f"PARAMS: {params}")
     attr_string = "".join(attr_list)
-    Q = params["h1"](attr_string)
+    Q = params["H1"](attr_string)
     # ak is the attribute private key
     ak = Element(params["e"], G1, value=Q ** msk)
     # Now encrypt ak using the proxy public key
-    print("--------------------------")
-    print("ak=",ak)
+    # print("--------------------------")
+    # print("ak=",ak)
     
     # print(str(ak))
     int_val = key_byte_to_int(str(ak).encode())
@@ -137,67 +138,67 @@ def skeyGen(params, attr_list, msk, public_key_to_encrypt):
     # new_ak = Element(params["e"], G1, value=key_int_to_byte(int_val).decode())
     # print(new_ak)
     # Encrypt ak
-    print("******************************")
-    print('int_val = ', int_val)
+    # print("******************************")
+    # print('int_val = ', int_val)
     # print('order is ', params['q'])
     # ak_enc = elgamal_encrypt(int_val, params['g'], params['e'], public_key_to_encrypt, params['q'])
     block_size = len(str(int(params['q'])))-1
     ak_enc, len_msg = elgamal_encrypt_block(int_val, params['g'], params['e'], public_key_to_encrypt, params['q'], block_size)
     # print(ak_enc)
-    print("--------------------------")
+    # print("--------------------------")
     return ak_enc, len_msg
 
 def decrypt_ak(params, ak_enc, private_key_to_decrypt, len_msg):
-    print("-------------------")
+    # print("-------------------")
+    # print(ak_enc)
     # print('order is ', params['q'])
     # ak_val = elgamal_decrypt(c1, c2, params['e'], private_key_to_decrypt, params['g'], params['q'])
     block_size = len(str(int(params['q'])))-1
     ak_val = elgamal_decrypt_block(ak_enc, params['g'], params['e'], private_key_to_decrypt, params['q'], len_msg, block_size)
-    print('ak_val:',ak_val)
+    # print('ak_val:',ak_val)
     ak = Element(params["e"], G1, value=key_int_to_byte(ak_val).decode())
-    print("------------------")
+    # print("------------------")
     return ak
 
 def encryTrans(params, attr_list, data_owner_sk, data_user_pk, sym_key, P):
     attr_string = "".join(attr_list)
-    Q = params["h1"](attr_string)
+    Q = params["H1"](attr_string)
     v = Element.random(params["e"], Zr)
     g_power_xy = Element(params["e"], G1, value= data_user_pk ** data_owner_sk)
     # Unsure steps
-    print('v is ',v)
-    print('sym key is ',sym_key)
-    v_dash = int(params['h2'](g_power_xy)) +int(v)
+    # print('v is ',v)
+    # print('sym key is ',sym_key)
+    v_dash = int(params['H2'](g_power_xy)) +int(v)
     pairing_value = params["e"].apply(Q, P) ** v
     # Do XOR between pairing_value and sym_key here
-    # TODO: Implement XOR
     # Get the int of sym_key
     int_key =  key_byte_to_int(sym_key)
-    xor_value = int_key ^ int(params['h2'](pairing_value))
+    xor_value = int_key ^ int(params['H2'](pairing_value))
     c = v_dash, xor_value
-    print('int key :', int_key)
-    print('pairing_value as int:', int(params['h2'](pairing_value)))
-    print("c in encry:",c)
+    # print('int key :', int_key)
+    # print('pairing_value as int:', int(params['H2'](pairing_value)))
+    # print("c in encry:",c)
     return c
 
 def decryTrans(params, c, ak_enc, data_owner_pk, data_user_sk, len_msg):
-    print("c in decry:",c)
+    # print("c in decry:",c)
     v_dash, V = c
     g_power_xy = Element(params["e"], G1, value= data_owner_pk ** data_user_sk)
     # Unsure step
-    v = v_dash - int(params['h2'](g_power_xy))
+    v = v_dash - int(params['H2'](g_power_xy))
     v = Element(params["e"], Zr, value=v)
-    print('v is ',v)
+    # print('v is ',v)
     # Decrpyt V
     ak = decrypt_ak(params, ak_enc, data_user_sk, len_msg)
-    print("ak is ",ak)
+    # print("ak is ",ak)
     pairing_value = params["e"].apply(ak, params["g"]) ** v
-    hash_pairing_value = params["h2"](pairing_value)
+    hash_pairing_value = params["H2"](pairing_value)
     # Do XOR between hash_pairing_value and V here
-    print('hash_pairing_value is ',hash_pairing_value)
+    # print('Hash_pairing_value is ',hash_pairing_value)
     int_key = V ^ int(hash_pairing_value)
-    print('int key is ',int_key)
+    # print('int key is ',int_key)
     sym_key = key_int_to_byte(int_key)
-    print('sym key is ',sym_key)
+    # print('sym key is ',sym_key)
     return sym_key
 
 def main():
@@ -205,8 +206,8 @@ def main():
     params = setup(10)
     # Generate a key-pair
     private_key, public_key = keyGen(params)
-    print( "public_key =", public_key)
-    print( "private_key =", private_key)
+    # print( "public_key =", public_key)
+    # print( "private_key =", private_key)
     # Get the table
     table = fetch_table("data/table2.csv")
     word_to_row_data = create_dictionary(table)
@@ -230,29 +231,29 @@ def main():
     data_user_sk, data_user_pk = keyGen(params)
     query_words = ["dhruv", "warun"]
     Td = trapdoor(params, public_key, data_user_sk, query_words)
-    print(f"Trapdoor: {Td}")
+    # print(f"Trapdoor: {Td}")
     # # Generate the ACD for access control
     # # print(r)
     Acd = delegate(params, r, private_key, data_user_pk, C)
-    print(f"ACD: {Acd}")
+    # print(f"ACD: {Acd}")
     # # Get the row/keyword matches
     # print(I.values())
 
     matches = dlist(params, Acd, Td, I)
 
-    # print(params["e"].apply(params["h1"]("dhruv") ** 2, params["g"] ** 10) == params["e"].apply(params["h1"]("dhruv"), params["g"] ** 20))
+    # print(params["e"].apply(params["H1"]("dhruv") ** 2, params["g"] ** 10) == params["e"].apply(params["H1"]("dhruv"), params["g"] ** 20))
     # print(matches)
     msk, P = init_ca_params(params)
     attr_list = ["dhruv", "warun"]
     ak_enc, len_msg = skeyGen(params, attr_list, msk, data_user_pk)
-
+    # print("ak_enc:",ak_enc)
     # # test decryption of ak
     # ak = decrypt_ak(params, ak_enc, data_user_sk, len_msg)
     # print(f"mod q: {params['q']}")
     # Test trans functions
-    print("###################")
+    # print("###################")
     c = encryTrans(params, attr_list, private_key, data_user_pk, sym_key, P)
-    print("###################")
+    # print("###################")
     key = decryTrans(params, c, ak_enc, public_key, data_user_sk, len_msg)
 
 

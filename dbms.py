@@ -97,12 +97,13 @@ class DBMSServer:
         try:
             # certification authority
             conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             conn.bind((self.host, self.port))
 
             conn.connect(('127.0.0.1', 8080))
             print('Connected to Certification Authority for getting Params')
             params = conn.recv(1000000)
-            params = pickle.loads(params)
+            params, P = pickle.loads(params)
             self.params = params
             self.fix_params()
             print('Params fixed!')
@@ -111,6 +112,7 @@ class DBMSServer:
             conn.close()
 
             serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            serv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             serv.bind((self.host, self.port))
             print(f"DBMS Server started on {self.host}:{self.port}")
             serv.listen(5)
