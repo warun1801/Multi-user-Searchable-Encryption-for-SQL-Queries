@@ -1,5 +1,5 @@
 import pypbc
-from pypbc import *
+from pypbc import Parameters, Pairing, Element, G1, G2, GT, Zr
 from inspect import signature
 """
 Functions available

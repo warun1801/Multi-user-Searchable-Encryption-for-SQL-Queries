@@ -2,7 +2,7 @@ import random
 import pickle
 from collections import defaultdict
 from cryptography.fernet import Fernet
-from pypbc import *
+from pypbc import Parameters, Pairing, Element, G1, G2, GT, Zr
 from elgamal import elgamal_encrypt_block, elgamal_decrypt_block
 from generation_utils import key_byte_to_int, key_int_to_byte
 from dict_creation import create_keyword_set, fetch_table, create_dictionary

@@ -245,6 +245,7 @@ class Proxy:
 
                         attr_list = ["name","name","name"]
                         enc_sym_key = encryTrans(self.PARAMS, attr_list, self.private_key, user_pub_key, self.sym_key, self.P)
+                        print(f"Normal Sym Key: {self.sym_key}")
                         print(f"Enc_sym_key: {enc_sym_key}")
                         with open('data/enc_sym_key.txt', 'wb') as f:
                             f.write(pickle.dumps(enc_sym_key))
